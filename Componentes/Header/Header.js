@@ -22,7 +22,31 @@ export default function Header() {
     <View style={estilo.container}>
       
       
-      git 
+      <View style={estilo.barraPesquisa}>
+        
+        {/* Envolve o ícone em um TouchableOpacity para o clique */}
+        <TouchableOpacity onPress={PressIcon}> 
+          <Entypo 
+            name="magnifying-glass" 
+            style={estilo.iconBuscar} 
+            size={24} 
+            color="black" // Ícone branco para contraste
+          /> 	
+        </TouchableOpacity>
+        
+        {/* TextInput com a referência */}
+        <TextInput 
+          ref={textInputRef} // 4. Anexa a referência
+          style={estilo.pesquisa} 
+          placeholder='Buscar por um Ingrediente'
+          placeholderTextColor="#000000ff" // Placeholder branco
+        />
+      </View>
+      
+      {/* Botão Adicionar */}
+      <TouchableOpacity style={estilo.botaoAdicionar}>
+        <Text style={estilo.textoBotao}>Adicionar novo Ingrediente</Text>
+      </TouchableOpacity>
       
     </View>
   );
