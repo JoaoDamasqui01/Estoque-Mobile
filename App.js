@@ -15,15 +15,17 @@ import { RadioButton } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { Entypo, MaterialIcons } from '@expo/vector-icons';
 
+const api = "http://localhost:5000/ingredientes";
+
 // --- CONFIGURAÇÕES GLOBAIS ---
-const DADOS_INICIAIS = [
+/*const DADOS_INICIAIS = [
     { id: 1, nome: "Farinha de trigo", qtdAtual: 15.000, unidade: "KG", pontoDePedido: 10, localizacao: "Armário" },
     { id: 2, nome: "Açúcar Refinado", qtdAtual: 5.500, unidade: "KG", pontoDePedido: 8, localizacao: "Armário" },
     { id: 3, nome: "Fermento Biológico", qtdAtual: 0.500, unidade: "PACOTE", pontoDePedido: 1, localizacao: "Geladeira" },
     { id: 4, nome: "Chocolate em pó", qtdAtual: 0.900, unidade: "KG", pontoDePedido: 2, localizacao: "Armário" },
     { id: 5, nome: "Creme de Leite", qtdAtual: 1.500, unidade: "UNIDADE", pontoDePedido: 3, localizacao: "Geladeira" },
     { id: 6, nome: "Carne Moída", qtdAtual: 2.000, unidade: "KG", pontoDePedido: 5, localizacao: "Freezer" },
-];
+];*/
 
 const UNIDADES_OPCOES = ['KG', 'LITROS', 'UNIDADE', 'PACOTE'];
 
@@ -32,13 +34,15 @@ const LOCALIZACOES_OPCOES = ['Armário', 'Geladeira', 'Freezer'];
 // --- COMPONENTE PRINCIPAL: InventoryManager (Tudo consolidado aqui) ---
 export default function InventoryManager() {
     // --- 1. ESTADOS DA APLICAÇÃO ---
-    const [ingredientes, setIngredientes] = useState(DADOS_INICIAIS);
+    const [ingredientes, setIngredientes] = useState([]);
     const [filtroEstoque, setFiltroEstoque] = useState('todos');
     const [localizacaoSelecionada, setLocalizacaoSelecionada] = useState('todos');
     const [termoBusca, setTermoBusca] = useState('');
     const textInputRef = useRef(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [itemSendoEditado, setItemSendoEditado] = useState(null); // Null para criação, Objeto para edição
+
+
 
     // --- 3. LÓGICA DE FILTRAGEM ---
     const listaFiltrada = useMemo(() => {
@@ -58,14 +62,22 @@ export default function InventoryManager() {
 
     // --- 4. FUNÇÕES CRUD E MODAL ---
 
+
     // CRUD: Excluir
-    const EXCLUIRIngrediente = (idParaExcluir, nomeIngrediente) => {
-        try {                
+    const EXCLUIRIngrediente = async (idParaExcluir) => {
+        try {
+            const response = await fetch(`${api}/${idParaExcluir}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error('Erro ao deletar ingrediente: ' + response.statusText);
+            }
             setIngredientes(prev => prev.filter(ingrediente => ingrediente.id !== idParaExcluir));
-            console.log("Sucesso ",{idParaExcluir}, " Ingrediente removido.");
-        }catch(error){
-          console.error("Erro ao deletar:", error);
-          console.log("Erro", "Falha ao deletar o ingrediente.");
+            console.log("Sucesso ", { idParaExcluir }, " Ingrediente removido.");
+        } catch (error) {
+            console.error("Erro ao deletar:", error);
+            console.log("Erro", "Falha ao deletar o ingrediente.");
         }
     };
 
@@ -78,28 +90,57 @@ export default function InventoryManager() {
 
 
     //CRUD: Criar 
-    const handleAbrirCriacao = () => {
-      try{
-        setItemSendoEditado(null);
-        setModalVisible(true);
-        console.log("Sucesso ", "novo ingrediente criado.");
-      }catch(error){
-        console.error("Erro ao criar:", error);
-      }
-        
+    const CRIARIngrediente = async (dadosFinais) => {
+        try {
+            const response = await fetch(api, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dadosFinais),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error('Erro ao criar novo ingrediente');
+            }
+
+            const dadosResposta = await response.json();
+            const novoingredienteAPI = dadosResposta.ingrediente;
+            setIngredientes(prev => [...prev, novoingredienteAPI]);
+
+            console.log("Sucesso ", "novo ingrediente criado.");
+        } catch (error) {
+            console.error("Erro ao criar:", error);
+        }
+
     };
 
     //CRUD: Editar
-    const EDICAOIngrediente = (idParaEditar, nomeIngrediente) => {
-      try{
-        setIngredientes(prev => prev.filter(ingrediente => ingrediente.id !== idParaEditar));
-        setModalVisible(true);
-        console.log("Sucesso ",{nomeIngrediente},{idParaEditar}, " Ingrediente para edição.");
-      }catch(error){
-        console.error("Erro ao editar:", error);
-        console.log("Erro", "Falha ao editar o ingrediente.");
-      }
-        
+    const EDICAOIngrediente = async (idParaEditar) => {
+        try {
+            const reposte = await fetch(`${api}/${idParaEditar}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nomeIngrediente }),
+            });
+
+            if (!reposte.ok) {
+                throw new Error('Erro ao editar ingrediente' + reposte.statusText);
+            }
+
+            const dadosResposta = await reposte.json();
+            const ingredienteEditado = dadosResposta.ingrediente;
+
+            setIngredientes()(prev => prev.map(ingrediente =>
+                ingrediente.id === idParaEditar ? ingredienteEditado : ingrediente
+            ));
+            console.log("Sucesso ", { idParaEditar }, " ingrediente editado.");
+
+        } catch (error) {
+            console.error("Erro ao editar:", error);
+            console.log("Erro", "Falha ao editar o ingrediente.");
+        }
+
+
     };
 
     // --- 5. LÓGICA DO FORMULÁRIO (PARA O MODAL) ---
@@ -115,10 +156,32 @@ export default function InventoryManager() {
 
     const [formData, setFormData] = useState(initialFormState);
 
+    const fetchIngredientes = async () => {
+        try {
+            const response = await fetch(api);
+
+            if (response.status === 204) {
+                setIngredientes([]); // Vazio (No Content)
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error('Falha ao buscar ingredientes: ' + response.status);
+            }
+
+            const dados = await response.json();
+            setIngredientes(dados); // Recebe o array da API
+        } catch (error) {
+            console.error("Erro na busca inicial:", error);
+            Alert.alert("Erro de API", "Não foi possível carregar os ingredientes.");
+            setIngredientes([]); // Garante que ingredientes é um array mesmo em caso de falha
+        }
+    };
+
     // Efeito para resetar/atualizar o estado do formulário quando o item de edição muda
     useEffect(() => {
-        setFormData(initialFormState);
-    }, [itemSendoEditado, initialFormState]);
+        fetchIngredientes();
+    }, []);
 
 
     const handleChangeForm = (name, value) => {
@@ -144,27 +207,30 @@ export default function InventoryManager() {
 
         // Formata os dados para o formato final
         const dadosFinais = {
-            ...formData,
-            qtdAtual: qtdAtualNum,
-            pontoDePedido: pontoDePedidoNum,
-        };
+            nome: formData.nome.trim(),
+            // CHAVES DO MODELO (BACKEND)
+            quantidade: qtdAtualNum,
+            unidade_medida: formData.unidade, // CORRIGIDO
+            ponto_pedido: pontoDePedidoNum, // CORRIGIDO
 
+            // Outros campos obrigatórios:
+            localizacao: formData.localizacao,
+            fornecedor: 'N/A',
+            preco_custo: 0.00
+        };
         if (itemSendoEditado) {
             // EDIÇÃO (Update)
-            setIngredientes(prev => prev.map(i =>
-                i.id === itemSendoEditado.id ? { ...i, ...dadosFinais } : i
-            ));
-            Alert.alert("Sucesso", `${dadosFinais.nome} atualizado!`);
+            EDICAOIngrediente(itemSendoEditado.id, dadosFinais);
+            console.log("Sucesso", `${dadosFinais.nome} editado!`);
         } else {
             // CRIAÇÃO (Create)
-            const novoId = ingredientes.length > 0 ? Math.max(...ingredientes.map(i => i.id)) + 1 : 1;
-            const novoIngrediente = { id: novoId, ...dadosFinais };
-            setIngredientes(prev => [...prev, novoIngrediente]);
-            Alert.alert("Sucesso", `${dadosFinais.nome} adicionado!`);
+            CRIARIngrediente(dadosFinais);
+            console.log("Sucesso", `${dadosFinais.nome} adicionado!`);
         }
 
         handleFecharModal();
     };
+
 
     // --- 6. RENDERIZAÇÃO PRINCIPAL ---
     return (
@@ -188,7 +254,7 @@ export default function InventoryManager() {
                     </View>
 
                     {/* BOTÃO ADICIONAR */}
-                    <TouchableOpacity style={estilo.botaoAdicionar} onPress={handleAbrirCriacao}>
+                    <TouchableOpacity style={estilo.botaoAdicionar} onPress={() => { setItemSendoEditado(null); setModalVisible(true); }}>
                         <Text style={estilo.textoBotao}>Adicionar novo Ingrediente</Text>
                     </TouchableOpacity>
 
@@ -273,7 +339,7 @@ export default function InventoryManager() {
                                 <View style={estilo.itemActionsContainerBlock}>
                                     <TouchableOpacity
                                         style={estilo.editButtonBlock}
-                                        onPress={() => EDICAOIngrediente(ingrediente.id, ingrediente.nome)}
+                                        onPress={() => { setItemSendoEditado(ingrediente); setModalVisible(true); }}
                                     >
                                         <Text style={estilo.buttonText}>Editar</Text>
                                     </TouchableOpacity>
@@ -374,6 +440,8 @@ export default function InventoryManager() {
                     </View>
                 </View>
             </Modal>
+
+
         </ScrollView>
     );
 }
