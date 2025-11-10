@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+// screens/Home.js
+import React, { useState, useMemo, useRef } from 'react';
 import {
     StyleSheet,
     View,
@@ -7,42 +8,112 @@ import {
     TextInput,
     ScrollView,
     Alert,
-    Modal,
     Platform
 } from 'react-native';
-// Importações necessárias
 import { RadioButton } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { Entypo, MaterialIcons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-const api = "http://localhost:5000/ingredientes";
+const api = "http://192.168.56.1:5000/ingredientes";
 
 // --- CONFIGURAÇÕES GLOBAIS ---
-/*const DADOS_INICIAIS = [
-    { id: 1, nome: "Farinha de trigo", qtdAtual: 15.000, unidade: "KG", pontoDePedido: 10, localizacao: "Armário" },
-    { id: 2, nome: "Açúcar Refinado", qtdAtual: 5.500, unidade: "KG", pontoDePedido: 8, localizacao: "Armário" },
-    { id: 3, nome: "Fermento Biológico", qtdAtual: 0.500, unidade: "PACOTE", pontoDePedido: 1, localizacao: "Geladeira" },
-    { id: 4, nome: "Chocolate em pó", qtdAtual: 0.900, unidade: "KG", pontoDePedido: 2, localizacao: "Armário" },
-    { id: 5, nome: "Creme de Leite", qtdAtual: 1.500, unidade: "UNIDADE", pontoDePedido: 3, localizacao: "Geladeira" },
-    { id: 6, nome: "Carne Moída", qtdAtual: 2.000, unidade: "KG", pontoDePedido: 5, localizacao: "Freezer" },
-];*/
-
-const UNIDADES_OPCOES = ['KG', 'LITROS', 'UNIDADE', 'PACOTE'];
-
 const LOCALIZACOES_OPCOES = ['Armário', 'Geladeira', 'Freezer'];
 
-// --- COMPONENTE PRINCIPAL: InventoryManager (Tudo consolidado aqui) ---
-export default function InventoryManager() {
+// --- COMPONENTE PRINCIPAL: Home ---
+export default function Home() {
+    const navigation = useNavigation();
+
     // --- 1. ESTADOS DA APLICAÇÃO ---
     const [ingredientes, setIngredientes] = useState([]);
     const [filtroEstoque, setFiltroEstoque] = useState('todos');
     const [localizacaoSelecionada, setLocalizacaoSelecionada] = useState('todos');
     const [termoBusca, setTermoBusca] = useState('');
     const textInputRef = useRef(null);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [itemSendoEditado, setItemSendoEditado] = useState(null); // Null para criação, Objeto para edição
 
+    // --- 2. FUNÇÕES CRUD E API ---
 
+    // CRUD: Leitura (Fetch)
+    const fetchIngredientes = async () => {
+        try {
+            const response = await fetch(api);
+
+            if (response.status === 204) {
+                setIngredientes([]);
+                return;
+            }
+
+            if (!response.ok) {
+                console.log('Falha ao buscar ingredientes: ' + response.status);
+            }
+
+            const dados = await response.json();
+
+            if (dados && dados.ingredientes && Array.isArray(dados.ingredientes)) {
+
+                const dadosMapeados = dados.map(item => ({
+                    id: item.id,
+                    nome: item.nome,
+                    quantidade: item.quantidade,
+                    unidade_medida: item.unidade_medida,
+                    ponto_pedido: item.ponto_pedido,
+                    localizacao: item.localizacao
+                }));
+
+                setIngredientes(dadosMapeados);
+        
+            } else { 
+                console.warn("Resposta da API em formato inesperado:", dados);
+                setIngredientes([]);
+                
+            }
+
+            setIngredientes(dadosMapeados);
+        } catch (error) {
+            console.log("Erro na busca inicial:", error);
+            // Em caso de erro na conexão, tente carregar dados mockados ou deixar vazio
+            setIngredientes([]);
+           
+        }
+    };
+
+    // Efeito para recarregar a lista sempre que a tela Home estiver em foco
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchIngredientes();
+        }, [])
+    );
+
+    // CRUD: Excluir
+    const EXCLUIRIngrediente = async (idParaExcluir, nome) => {
+        console.log(
+            "Confirmação",
+            `Tem certeza que deseja excluir o ingrediente: ${nome}?`,
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Excluir",
+                    onPress: async () => {
+                        try {
+                            const response = await fetch(`${api}/${idParaExcluir}`, {
+                                method: 'DELETE',
+                            });
+
+                            if (!response.ok) {
+                                throw new Error('Erro ao deletar ingrediente: ' + response.statusText);
+                            }
+                            setIngredientes(prev => prev.filter(ingrediente => ingrediente.id !== idParaExcluir));
+                            console.log("Sucesso", "Ingrediente removido com sucesso.");
+                        } catch (error) {
+                            console.error("Erro ao deletar:", error);
+                            console.log("Erro", "Falha ao deletar o ingrediente.");
+                        }
+                    },
+                    style: "destructive"
+                }
+            ]
+        );
+    };
 
     // --- 3. LÓGICA DE FILTRAGEM ---
     const listaFiltrada = useMemo(() => {
@@ -59,180 +130,7 @@ export default function InventoryManager() {
         });
     }, [ingredientes, termoBusca, filtroEstoque, localizacaoSelecionada]);
 
-
-    // --- 4. FUNÇÕES CRUD E MODAL ---
-
-
-    // CRUD: Excluir
-    const EXCLUIRIngrediente = async (idParaExcluir) => {
-        try {
-            const response = await fetch(`${api}/${idParaExcluir}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                throw new Error('Erro ao deletar ingrediente: ' + response.statusText);
-            }
-            setIngredientes(prev => prev.filter(ingrediente => ingrediente.id !== idParaExcluir));
-            console.log("Sucesso ", { idParaExcluir }, " Ingrediente removido.");
-        } catch (error) {
-            console.error("Erro ao deletar:", error);
-            console.log("Erro", "Falha ao deletar o ingrediente.");
-        }
-    };
-
-
-    // Modal: Ações
-    const handleFecharModal = () => {
-        setModalVisible(false);
-        setItemSendoEditado(null);
-    };
-
-
-    //CRUD: Criar 
-    const CRIARIngrediente = async (dadosFinais) => {
-        try {
-            const response = await fetch(api, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dadosFinais),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error('Erro ao criar novo ingrediente');
-            }
-
-            const dadosResposta = await response.json();
-            const novoingredienteAPI = dadosResposta.ingrediente;
-            setIngredientes(prev => [...prev, novoingredienteAPI]);
-
-            console.log("Sucesso ", "novo ingrediente criado.");
-        } catch (error) {
-            console.error("Erro ao criar:", error);
-        }
-
-    };
-
-    //CRUD: Editar
-    const EDICAOIngrediente = async (idParaEditar) => {
-        try {
-            const reposte = await fetch(`${api}/${idParaEditar}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nomeIngrediente }),
-            });
-
-            if (!reposte.ok) {
-                throw new Error('Erro ao editar ingrediente' + reposte.statusText);
-            }
-
-            const dadosResposta = await reposte.json();
-            const ingredienteEditado = dadosResposta.ingrediente;
-
-            setIngredientes()(prev => prev.map(ingrediente =>
-                ingrediente.id === idParaEditar ? ingredienteEditado : ingrediente
-            ));
-            console.log("Sucesso ", { idParaEditar }, " ingrediente editado.");
-
-        } catch (error) {
-            console.error("Erro ao editar:", error);
-            console.log("Erro", "Falha ao editar o ingrediente.");
-        }
-
-
-    };
-
-    // --- 5. LÓGICA DO FORMULÁRIO (PARA O MODAL) ---
-
-    // Estado inicial do Formulário (depende de itemSendoEditado)
-    const initialFormState = useMemo(() => ({
-        nome: itemSendoEditado?.nome || '',
-        qtdAtual: (itemSendoEditado?.qtdAtual || 0).toFixed(3).toString(),
-        unidade: itemSendoEditado?.unidade || UNIDADES_OPCOES[0] || 'KG',
-        pontoDePedido: (itemSendoEditado?.pontoDePedido || 0).toString(),
-        localizacao: itemSendoEditado?.localizacao || LOCALIZACOES_OPCOES[0] || 'Armário',
-    }), [itemSendoEditado, LOCALIZACOES_OPCOES]);
-
-    const [formData, setFormData] = useState(initialFormState);
-
-    const fetchIngredientes = async () => {
-        try {
-            const response = await fetch(api);
-
-            if (response.status === 204) {
-                setIngredientes([]); // Vazio (No Content)
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error('Falha ao buscar ingredientes: ' + response.status);
-            }
-
-            const dados = await response.json();
-            setIngredientes(dados); // Recebe o array da API
-        } catch (error) {
-            console.error("Erro na busca inicial:", error);
-            Alert.alert("Erro de API", "Não foi possível carregar os ingredientes.");
-            setIngredientes([]); // Garante que ingredientes é um array mesmo em caso de falha
-        }
-    };
-
-    // Efeito para resetar/atualizar o estado do formulário quando o item de edição muda
-    useEffect(() => {
-        fetchIngredientes();
-    }, []);
-
-
-    const handleChangeForm = (name, value) => {
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    // Lógica do botão Salvar/Adicionar
-    const handleSaveIngrediente = () => {
-        // Validação básica
-        if (!formData.nome.trim() || !formData.qtdAtual.trim() || !formData.pontoDePedido.trim()) {
-            Alert.alert("Erro", "Todos os campos de texto devem ser preenchidos.");
-            return;
-        }
-
-        // Validação numérica e conversão
-        const qtdAtualNum = parseFloat(formData.qtdAtual.replace(',', '.'));
-        const pontoDePedidoNum = parseInt(formData.pontoDePedido, 10);
-
-        if (isNaN(qtdAtualNum) || isNaN(pontoDePedidoNum) || qtdAtualNum < 0 || pontoDePedidoNum < 0) {
-            Alert.alert("Erro", "Quantidade e Ponto de Pedido devem ser números positivos válidos.");
-            return;
-        }
-
-        // Formata os dados para o formato final
-        const dadosFinais = {
-            nome: formData.nome.trim(),
-            // CHAVES DO MODELO (BACKEND)
-            quantidade: qtdAtualNum,
-            unidade_medida: formData.unidade, // CORRIGIDO
-            ponto_pedido: pontoDePedidoNum, // CORRIGIDO
-
-            // Outros campos obrigatórios:
-            localizacao: formData.localizacao,
-            fornecedor: 'N/A',
-            preco_custo: 0.00
-        };
-        if (itemSendoEditado) {
-            // EDIÇÃO (Update)
-            EDICAOIngrediente(itemSendoEditado.id, dadosFinais);
-            console.log("Sucesso", `${dadosFinais.nome} editado!`);
-        } else {
-            // CRIAÇÃO (Create)
-            CRIARIngrediente(dadosFinais);
-            console.log("Sucesso", `${dadosFinais.nome} adicionado!`);
-        }
-
-        handleFecharModal();
-    };
-
-
-    // --- 6. RENDERIZAÇÃO PRINCIPAL ---
+    // --- 4. RENDERIZAÇÃO PRINCIPAL ---
     return (
         <ScrollView style={estilo.scrollContainer}>
             <View style={estilo.container}>
@@ -253,8 +151,12 @@ export default function InventoryManager() {
                         />
                     </View>
 
-                    {/* BOTÃO ADICIONAR */}
-                    <TouchableOpacity style={estilo.botaoAdicionar} onPress={() => { setItemSendoEditado(null); setModalVisible(true); }}>
+                    {/* BOTÃO ADICIONAR (Navega para a tela IngredienteForm) */}
+                    <TouchableOpacity
+                        style={estilo.botaoAdicionar}
+                        // item: null indica criação de novo item
+                        onPress={() => navigation.navigate('Formulario', { item: null })}
+                    >
                         <Text style={estilo.textoBotao}>Adicionar novo Ingrediente</Text>
                     </TouchableOpacity>
 
@@ -270,7 +172,7 @@ export default function InventoryManager() {
                                     </View>
                                     <View style={estilo.opcaoItem}>
                                         <RadioButton value="baixoEstoque" color="#f4a020" />
-                                        <Text style={estilo.radioText}>Baixa Estoque</Text>
+                                        <Text style={estilo.radioText}>Baixo Estoque</Text>
                                     </View>
                                 </View>
                             </RadioButton.Group>
@@ -297,28 +199,27 @@ export default function InventoryManager() {
                     </View>
                 </View>
 
-                {/* --- SEÇÃO 2: LISTA DE INGREDIENTES (ItemIngrediente embutido) --- */}
+                {/* --- SEÇÃO 2: LISTA DE INGREDIENTES --- */}
                 <Text style={estilo.tituloLista}>Itens no Estoque ({listaFiltrada.length} encontrado(s)):</Text>
                 <View style={estilo.listaContainer}>
-                    {listaFiltrada.map((ingrediente) => {
-                        const isLowStock = ingrediente.qtdAtual <= ingrediente.pontoDePedido;
+                    {listaFiltrada.map((ingredientes) => {
+                        const isLowStock = ingredientes.qtdAtual <= ingredientes.pontoDePedido;
                         return (
                             <View
-                                key={ingrediente.id}
-                                // Estilos do IngredienteItem
+                                key={ingredientes.id_Ingrediente}
                                 style={[estilo.itemContainer, isLowStock ? estilo.itemContainerLowStock : {}]}
                             >
                                 <View style={estilo.detailsGrid}>
-                                    {/* Detalhes do Ingrediente */}
+                                    {/* Detalhes do Ingredientes */}
                                     <View style={estilo.itemColumn}>
                                         <View style={estilo.detailBlock}>
-                                            <Text style={estilo.itemLabelBlock}>Ingrediente:</Text>
-                                            <Text style={[estilo.itemValueBlock, estilo.itemNome]}>{ingrediente.nome}</Text>
+                                            <Text style={estilo.itemLabelBlock}>Ingredientes:</Text>
+                                            <Text style={[estilo.itemValueBlock, estilo.itemNome]}>{ingredientes.nome}</Text>
                                             {isLowStock && <MaterialIcons name="warning" size={16} color="#f4a020" style={estilo.warningIconBlock} />}
                                         </View>
                                         <View style={estilo.detailBlock}>
                                             <Text style={estilo.itemLabelBlock}>Qtde atual:</Text>
-                                            <Text style={[estilo.itemValueBlock, estilo.qtdAtualValue]}>{ingrediente.qtdAtual.toFixed(3)} {ingrediente.unidade}</Text>
+                                            <Text style={[estilo.itemValueBlock, estilo.qtdAtualValue]}>{ingredientes.quantidade.toFixed(3)} {ingredientes.unidade}</Text>
                                         </View>
                                     </View>
 
@@ -326,11 +227,11 @@ export default function InventoryManager() {
                                     <View style={estilo.itemColumn}>
                                         <View style={estilo.detailBlock}>
                                             <Text style={estilo.itemLabelBlock}>Localização:</Text>
-                                            <Text style={estilo.itemValueBlock}>{ingrediente.localizacao}</Text>
+                                            <Text style={estilo.itemValueBlock}>{ingredientes.localizacao}</Text>
                                         </View>
                                         <View style={estilo.detailBlock}>
                                             <Text style={estilo.itemLabelBlock}>Ponto de pedido:</Text>
-                                            <Text style={estilo.itemValueBlock}>{ingrediente.pontoDePedido}</Text>
+                                            <Text style={estilo.itemValueBlock}>{ingredientes.pontoDePedido}</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -339,13 +240,14 @@ export default function InventoryManager() {
                                 <View style={estilo.itemActionsContainerBlock}>
                                     <TouchableOpacity
                                         style={estilo.editButtonBlock}
-                                        onPress={() => { setItemSendoEditado(ingrediente); setModalVisible(true); }}
+                                        // Navega para a tela de Formulário passando o item para edição
+                                        onPress={() => navigation.navigate('Formulario', { item: ingredientes })}
                                     >
                                         <Text style={estilo.buttonText}>Editar</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={estilo.deleteButtonBlock}
-                                        onPress={() => EXCLUIRIngrediente(ingrediente.id, ingrediente.nome)}
+                                        onPress={() => EXCLUIRIngrediente(ingredientes.id, ingredientes.nome)}
                                     >
                                         <Text style={estilo.buttonText}>Excluir</Text>
                                     </TouchableOpacity>
@@ -358,90 +260,6 @@ export default function InventoryManager() {
                     )}
                 </View>
             </View>
-
-            {/* --- SEÇÃO 3: MODAL DE FORMULÁRIO (IngredienteFormModal embutido) --- */}
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={modalVisible}
-                onRequestClose={handleFecharModal}
-            >
-                <View style={estilo.modalContainer}>
-                    <View style={estilo.modalView}>
-                        <Text style={estilo.modalTitle}>{itemSendoEditado ? 'Editar Ingrediente' : 'Novo Ingrediente'}</Text>
-
-                        <ScrollView style={estilo.formScrollView}>
-                            {/* Campo Nome */}
-                            <Text style={estilo.formLabel}>Nome:</Text>
-                            <TextInput
-                                style={estilo.formInput}
-                                value={formData.nome}
-                                onChangeText={(text) => handleChangeForm('nome', text)}
-                                placeholder="Ex: Farinha de Trigo"
-                            />
-
-                            {/* Campo Quantidade Atual */}
-                            <Text style={estilo.formLabel}>Qtde Atual (ex: 10.500):</Text>
-                            <TextInput
-                                style={estilo.formInput}
-                                value={formData.qtdAtual}
-                                onChangeText={(text) => handleChangeForm('qtdAtual', text.replace(/[^0-9.]/g, ''))}
-                                keyboardType="numeric"
-                            />
-
-                            {/* Campo Unidade */}
-                            <Text style={estilo.formLabel}>Unidade:</Text>
-                            <View style={estilo.pickerFormContainer}>
-                                <Picker
-                                    selectedValue={formData.unidade}
-                                    style={estilo.pickerForm}
-                                    onValueChange={(itemValue) => handleChangeForm('unidade', itemValue)}
-                                >
-                                    {UNIDADES_OPCOES.map(un => (
-                                        <Picker.Item key={un} label={un} value={un} />
-                                    ))}
-                                </Picker>
-                            </View>
-
-                            {/* Campo Ponto de Pedido */}
-                            <Text style={estilo.formLabel}>Ponto de Pedido (inteiro):</Text>
-                            <TextInput
-                                style={estilo.formInput}
-                                value={formData.pontoDePedido}
-                                onChangeText={(text) => handleChangeForm('pontoDePedido', text.replace(/[^0-9]/g, ''))}
-                                keyboardType="numeric"
-                            />
-
-                            {/* Campo Localização (Picker) */}
-                            <Text style={estilo.formLabel}>Localização:</Text>
-                            <View style={estilo.pickerFormContainer}>
-                                <Picker
-                                    selectedValue={formData.localizacao}
-                                    style={estilo.pickerForm}
-                                    onValueChange={(itemValue) => handleChangeForm('localizacao', itemValue)}
-                                >
-                                    {LOCALIZACOES_OPCOES.map(loc => (
-                                        <Picker.Item key={loc} label={loc} value={loc} />
-                                    ))}
-                                </Picker>
-                            </View>
-
-                        </ScrollView>
-
-                        {/* Botões do Modal */}
-                        <View style={estilo.modalActions}>
-                            <TouchableOpacity style={[estilo.modalButton, estilo.modalButtonCancel]} onPress={handleFecharModal}>
-                                <Text style={estilo.modalButtonText}>Cancelar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[estilo.modalButton, estilo.modalButtonSave]} onPress={handleSaveIngrediente}>
-                                <Text style={estilo.modalButtonText}>{itemSendoEditado ? 'Salvar Edição' : 'Adicionar'}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-
         </ScrollView>
     );
 }
@@ -484,19 +302,4 @@ const estilo = StyleSheet.create({
     editButtonBlock: { backgroundColor: '#4CAF50', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 10, flex: 1, marginRight: 10, alignItems: 'center' },
     deleteButtonBlock: { backgroundColor: '#F44336', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 10, flex: 1, alignItems: 'center' },
     buttonText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-
-    // Estilos do Modal (para o formulário)
-    modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
-    modalView: { width: '90%', maxHeight: '80%', backgroundColor: 'white', borderRadius: 20, padding: 25, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
-    modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 15, color: '#c73131' },
-    formScrollView: { width: '100%' },
-    formLabel: { fontSize: 16, fontWeight: 'bold', marginTop: 10, marginBottom: 5, color: '#333' },
-    formInput: { width: '100%', height: 40, borderColor: '#ccc', borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, marginBottom: 10, backgroundColor: '#f9f9f9' },
-    pickerFormContainer: { borderColor: '#ccc', borderWidth: 1, borderRadius: 8, marginBottom: 10, backgroundColor: '#f9f9f9', overflow: 'hidden' },
-    pickerForm: { width: '100%', height: 40 },
-    modalActions: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 20 },
-    modalButton: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center', marginHorizontal: 5 },
-    modalButtonCancel: { backgroundColor: '#6c757d' },
-    modalButtonSave: { backgroundColor: '#4CAF50' },
-    modalButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
 });

@@ -1,4 +1,6 @@
 const express = require("express");
+const bd = require("./dataBase");
+const Ingrediente =  require ("./modelo/Ingredientes");
 const cors = require("cors");
 
 const app = express();
@@ -14,7 +16,7 @@ const corsOptions = {
 app.use(cors(corsOptions))
 app.use(express.json());    
 
-const port = 8080;
+const port = 5000;
 
 bd.sync().then(() =>{
     console.log("Banco de dados sincronizado.");
@@ -31,7 +33,7 @@ bd.sync().then(() =>{
  * 🟢 POST /ingredientes
  * CRIA um novo ingrediente.
  */
-app.post("/cadastro", async (req, res) => {
+app.post("/ingredientes", async (req, res) => {
     try {
         const {nome, quantidade, unidade_medida,fornecedor,
             ponto_pedido, preco_custo, localizacao
@@ -52,7 +54,7 @@ app.post("/cadastro", async (req, res) => {
     } catch (error) {
         console.error("Erro ao cadastrar ingrediente:", error);
         // O status 400 é comum para erros de validação/entrada de dados
-        res.status(400).json({
+        res.status(500).json({
             erro: "Erro ao inserir o registro",
             detalhes: error.message
         });
@@ -70,7 +72,8 @@ app.get("/ingredientes", async (req, res) => {
         const ingredientes = await Ingrediente.findAll();
 
         if (ingredientes.length > 0) {
-            res.status(200).json(ingredientes);
+            res.status(200).json({ingredientes});
+            console.log("Ingredientes encontrados:", ingredientes);
         } else {
             // 204 No Content, indica sucesso, mas sem dados para retornar
             res.status(204).json({
@@ -80,7 +83,8 @@ app.get("/ingredientes", async (req, res) => {
     } catch (error) {
         console.error("Erro ao buscar ingredientes:", error);
         res.status(500).json({
-            erro: "Erro interno do servidor ao buscar registros"
+            erro: "Erro interno do servidor ao buscar registros",
+            detalhes: error.message
         });
     }
 });

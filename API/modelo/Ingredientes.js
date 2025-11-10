@@ -2,7 +2,13 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../dataBase");
 
 const Ingrediente = sequelize.define("Ingredientes", {
-
+    id_ingrediente: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        field: "id_ingrediente",
+        autoIncrement: true,
+        allowNull: false,
+    },
     nome: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -27,9 +33,9 @@ const Ingrediente = sequelize.define("Ingredientes", {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
     },
-    localizacao:{
-        type:DataTypes.STRING,
-        allowNull:false,
+    localizacao: {
+        type: DataTypes.STRING,
+        allowNull: false,
     }
 });
 
