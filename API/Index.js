@@ -1,32 +1,29 @@
 const express = require("express");
 const bd = require("./dataBase");
-const Ingrediente =  require ("./modelo/Ingredientes");
+const Ingrediente = require("./modelo/Ingredientes");
 const cors = require("cors");
 
 const app = express();
 
 const corsOptions = {
 
-  origin: '*', 
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', 
-  credentials: true, 
-  optionsSuccessStatus: 204 
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions))
-app.use(express.json());    
+app.use(express.json());
 
 const port = 5000;
 
-bd.sync().then(() =>{
+bd.sync().then(() => {
     console.log("Banco de dados sincronizado.");
-
-    app.listen(port, () => {
-        console.log(`Servidor rodando em http://localhost:${port}`);
-    });
 }).catch((error) => {
     console.error("Erro ao sincronizar o banco de dados:", error);
 });
+
 
 
 /**
@@ -35,25 +32,42 @@ bd.sync().then(() =>{
  */
 app.post("/ingredientes", async (req, res) => {
     try {
-        const {nome, quantidade, unidade_medida,fornecedor,
-            ponto_pedido, preco_custo, localizacao
+        const {
+            nome,
+            quantidade,
+            unidade_medida,
+            fornecedor,
+            ponto_pedido,
+            preco_custo,
+            localizacao
         } = req.body;
 
-        // Validação básica se os campos obrigatórios estão presentes
+
+
+        // Ajuste para evitar erro com número zero (0)
         if (!nome || !quantidade || !unidade_medida || !fornecedor || !ponto_pedido || !preco_custo || !localizacao) {
             return res.status(400).json({
                 erro: "Todos os campos obrigatórios devem ser preenchidos."
             });
         }
 
-        const novoIngrediente = await Ingrediente.create(req.body);
+
+        const novoIngrediente = await Ingrediente.create({
+            nome,
+            quantidade,
+            unidade_medida,
+            fornecedor,
+            ponto_pedido,
+            preco_custo,
+            localizacao
+        });
 
         res.status(201).json({
             ingrediente: novoIngrediente,
-            mensagem: "Ingrediente cadastrado com sucesso!"});
+            mensagem: "Ingrediente cadastrado com sucesso!"
+        });
     } catch (error) {
         console.error("Erro ao cadastrar ingrediente:", error);
-        // O status 400 é comum para erros de validação/entrada de dados
         res.status(500).json({
             erro: "Erro ao inserir o registro",
             detalhes: error.message
@@ -72,7 +86,7 @@ app.get("/ingredientes", async (req, res) => {
         const ingredientes = await Ingrediente.findAll();
 
         if (ingredientes.length > 0) {
-            res.status(200).json({ingredientes});
+            res.status(200).json({ ingredientes });
             console.log("Ingredientes encontrados:", ingredientes);
         } else {
             // 204 No Content, indica sucesso, mas sem dados para retornar
@@ -178,27 +192,24 @@ app.delete("/ingredientes/:id", async (req, res) => {
 
     if (isNaN(id) || id <= 0) {
         return res.status(400).json({
-            mensagem: "O ID deve ser um número positivo válido."
+            mensagem: "ID inválido."
         });
     }
 
     try {
-        const deleted = await Ingrediente.destroy({
-            where: {
-                id: id
-            }
-        });
+        const ingrediente = await Ingrediente.findByPk(id);
 
-        if (deleted) {
-            // 200 OK ou 204 No Content são aceitáveis para sucesso na exclusão
-            res.status(200).json({
-                mensagem: "Ingrediente excluído com sucesso."
-            });
-        } else {
-            res.status(404).json({
+        if (!ingrediente) {
+            return res.status(404).json({
                 mensagem: "Ingrediente não encontrado para exclusão."
             });
         }
+
+        await ingrediente.destroy();
+
+        res.status(200).json({
+            mensagem: "Ingrediente excluído com sucesso!"
+        });
     } catch (error) {
         console.error("Erro ao deletar ingrediente:", error);
         res.status(500).json({
@@ -206,6 +217,7 @@ app.delete("/ingredientes/:id", async (req, res) => {
         });
     }
 });
+
 
 app.listen(port, () => {
     console.log(`Servidor rodando em http://localhost:${port}`);

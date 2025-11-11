@@ -17,7 +17,7 @@ const api = "http://localhost:5000/ingredientes";
 
 // --- CONFIGURAÇÕES GLOBAIS ---
 const UNIDADES_OPCOES = ['KG', 'LITROS', 'UNIDADE', 'PACOTE'];
-const LOCALIZACOES_OPCOES = ['Armário', 'Geladeira', 'Freezer'];
+const LOCALIZACOES_OPCOES = ['ARMÁRIO', 'GELADEIRA', 'FRIZZER'];
 
 // --- COMPONENTE PRINCIPAL: IngredienteForm ---
 export default function IngredienteForm() {
@@ -35,6 +35,8 @@ export default function IngredienteForm() {
         unidade: itemSendoEditado?.unidade || UNIDADES_OPCOES[0] || 'KG',
         pontoDePedido: (itemSendoEditado?.pontoDePedido || 0).toString(),
         localizacao: itemSendoEditado?.localizacao || LOCALIZACOES_OPCOES[0] || 'Armário',
+        fornecedor: itemSendoEditado?.fornecedor || '',
+        precoCusto: itemSendoEditado?.preco_custo?.toString() || ''
     }), [itemSendoEditado]);
 
     const [formData, setFormData] = useState(initialFormState);
@@ -57,15 +59,18 @@ export default function IngredienteForm() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                console.log("Erro do servidor:", errorData);
-                
+                console.error("Erro do servidor:", errorData);
+                console.log(response.data);
+                throw new Error('Erro ao criar novo ingrediente');
             }
+            console.log(response.data)
 
-            // const dadosResposta = await response.json(); // Se a API retornar o item criado
+            const dadosResposta = await response.json(); // Se a API retornar o item criado
             console.log("Sucesso", `${dadosFinais.nome} adicionado com sucesso!`);
+            console.log("Sucessoadicionado com sucesso!");
             navigation.goBack(); // Volta para a lista
         } catch (error) {
-            console.log("Erro ao criar:", error);
+            console.error("Erro ao criar:", error);
             console.log("Erro", "Falha ao adicionar o ingrediente.");
         }
     };
@@ -83,11 +88,11 @@ export default function IngredienteForm() {
             }
 
             // const dadosResposta = await response.json(); // Se a API retornar o item editado
-            console.log("Sucesso", `${dadosParaAtualizar.nome} editado com sucesso!`);
+            Alert.alert("Sucesso", `${dadosParaAtualizar.nome} editado com sucesso!`);
             navigation.goBack(); // Volta para a lista
         } catch (error) {
             console.error("Erro ao editar:", error);
-            console.log("Erro", "Falha ao editar o ingrediente.");
+            Alert.alert("Erro", "Falha ao editar o ingrediente.");
         }
     };
 
@@ -99,41 +104,52 @@ export default function IngredienteForm() {
 
     // Lógica do botão Salvar/Adicionar
     const handleSaveIngrediente = () => {
-        // 1. Validação básica
-        if (!formData.nome.trim() || !formData.qtdAtual.trim() || !formData.pontoDePedido.trim()) {
-            console.log("Erro", "Todos os campos de texto devem ser preenchidos.");
+        if (
+            !formData.nome.trim() ||
+            !formData.qtdAtual.trim() ||
+            !formData.pontoDePedido.trim() ||
+            !formData.fornecedor.trim() ||
+            !formData.precoCusto.trim()
+        ) {
+            Alert.alert("Erro", "Todos os campos devem ser preenchidos.");
             return;
         }
 
-        // 2. Validação numérica e conversão
         const qtdAtualNum = parseFloat(formData.qtdAtual.replace(',', '.'));
         const pontoDePedidoNum = parseInt(formData.pontoDePedido, 10);
+        const precoCustoNum = parseFloat(formData.precoCusto.replace(',', '.'));
 
-        if (isNaN(qtdAtualNum) || isNaN(pontoDePedidoNum) || qtdAtualNum < 0 || pontoDePedidoNum < 0) {
-            console.log("Erro", "Quantidade e Ponto de Pedido devem ser números positivos válidos.");
+        if (
+            isNaN(qtdAtualNum) ||
+            isNaN(pontoDePedidoNum) ||
+            isNaN(precoCustoNum) ||
+            qtdAtualNum < 0 ||
+            pontoDePedidoNum < 0 ||
+            precoCustoNum < 0
+        ) {
+            Alert.alert("Erro", "Valores numéricos inválidos.");
             return;
         }
 
-        // 3. Formata os dados para o formato que o BACKEND (Sequelize) espera
         const dadosFinais = {
             nome: formData.nome.trim(),
-            quantidade: formData.qtdAtual.replace(',', '.'),
+            quantidade: qtdAtualNum,
             unidade_medida: formData.unidade,
             ponto_pedido: pontoDePedidoNum,
             localizacao: formData.localizacao,
-            // Certifique-se de que estes valores padrão são aceitos pelo seu Sequelize/MySQL.
-            fornecedor: itemSendoEditado?.fornecedor || 'N/A',
-            preco_custo: itemSendoEditado?.preco_custo || 0.00
-        };
+            fornecedor: formData.fornecedor.trim(),
+            preco_custo: precoCustoNum
+        }
+
+        console.log("Enviando para API:", dadosFinais);
 
         if (isEditing) {
-            // EDIÇÃO (Update)
-            EDICAOIngrediente(itemSendoEditado.id, dadosFinais);
+            EDICAOIngrediente(itemSendoEditado.id_Ingrediente, dadosFinais);
         } else {
-            // CRIAÇÃO (Create)
             CRIARIngrediente(dadosFinais);
         }
     };
+
 
     // --- 3. RENDERIZAÇÃO DA TELA ---
     return (
@@ -153,11 +169,31 @@ export default function IngredienteForm() {
                     />
 
                     {/* Campo Quantidade Atual */}
-                    <Text style={estilo.formLabel}>Qtde Atual (ex: 10.500):</Text>
+                    <Text style={estilo.formLabel}>Qtde Atual (inteiro):</Text>
                     <TextInput
                         style={estilo.formInput}
                         value={formData.qtdAtual}
-                        onChangeText={(text) => handleChangeForm('qtdAtual', text.replace(/[^0-9.]/g, ''))}
+                        onChangeText={(text) => {
+                            const somenteInteiro = text.replace(/[^0-9]/g, '');
+                            handleChangeForm('qtdAtual', somenteInteiro);
+                        }}
+                        keyboardType="numeric"
+                    />
+
+                    <Text style={estilo.formLabel}>Forncedor</Text>
+                    <TextInput
+                        style={estilo.formInput}
+                        value={formData.fornecedor || ''}
+                        onChangeText={(text) => handleChangeForm('fornecedor', text)}
+                        placeholder="Ex: Fornecedor XYZ"
+                    />
+
+                    <Text style={estilo.formLabel}>Preço de Custo</Text>
+                    <TextInput
+                        style={estilo.formInput}
+                        value={formData.precoCusto || ''}
+                        onChangeText={(text) => handleChangeForm('precoCusto', text)}
+                        placeholder="Ex: 25.50"
                         keyboardType="numeric"
                     />
 

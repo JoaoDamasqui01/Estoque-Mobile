@@ -15,7 +15,7 @@ import { Picker } from '@react-native-picker/picker';
 import { Entypo, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-const api = "http://192.168.56.1:5000/ingredientes";
+const api = "http://localhost:5000/ingredientes";
 
 // --- CONFIGURAÇÕES GLOBAIS ---
 const LOCALIZACOES_OPCOES = ['Armário', 'Geladeira', 'Freezer'];
@@ -43,37 +43,31 @@ export default function Home() {
                 return;
             }
 
-            if (!response.ok) {
-                console.log('Falha ao buscar ingredientes: ' + response.status);
-            }
-
             const dados = await response.json();
 
-            if (dados && dados.ingredientes && Array.isArray(dados.ingredientes)) {
+            if (dados && Array.isArray(dados.ingredientes)) {
 
-                const dadosMapeados = dados.map(item => ({
-                    id: item.id,
+                const dadosMapeados = dados.ingredientes.map(item => ({
+                    id_Ingrediente: item.id_Ingrediente,
                     nome: item.nome,
                     quantidade: item.quantidade,
                     unidade_medida: item.unidade_medida,
                     ponto_pedido: item.ponto_pedido,
-                    localizacao: item.localizacao
+                    localizacao: item.localizacao,
+                    fornecedor: item.fornecedor,
+                    preco_custo: item.preco_custo,
                 }));
 
                 setIngredientes(dadosMapeados);
-        
-            } else { 
+
+            } else {
                 console.warn("Resposta da API em formato inesperado:", dados);
                 setIngredientes([]);
-                
             }
 
-            setIngredientes(dadosMapeados);
         } catch (error) {
             console.log("Erro na busca inicial:", error);
-            // Em caso de erro na conexão, tente carregar dados mockados ou deixar vazio
             setIngredientes([]);
-           
         }
     };
 
@@ -85,35 +79,41 @@ export default function Home() {
     );
 
     // CRUD: Excluir
-    const EXCLUIRIngrediente = async (idParaExcluir, nome) => {
-        console.log(
-            "Confirmação",
-            `Tem certeza que deseja excluir o ingrediente: ${nome}?`,
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Excluir",
-                    onPress: async () => {
-                        try {
-                            const response = await fetch(`${api}/${idParaExcluir}`, {
-                                method: 'DELETE',
-                            });
+    const EXCLUIRIngrediente = async (id_Ingrediente) => {
 
-                            if (!response.ok) {
-                                throw new Error('Erro ao deletar ingrediente: ' + response.statusText);
-                            }
-                            setIngredientes(prev => prev.filter(ingrediente => ingrediente.id !== idParaExcluir));
-                            console.log("Sucesso", "Ingrediente removido com sucesso.");
-                        } catch (error) {
-                            console.error("Erro ao deletar:", error);
-                            console.log("Erro", "Falha ao deletar o ingrediente.");
-                        }
-                    },
-                    style: "destructive"
-                }
-            ]
-        );
+        if(!id_Ingrediente){
+            return console.error("ID do ingrediente inválido para exclusão.");
+        }
+
+        if(!window.confirm("Confirma a exclusão deste ingrediente?")) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://localhost:5000/ingredientes/${id_Ingrediente}`, {
+                method: "DELETE",
+            });
+
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Erro do servidor:", errorData);
+                throw new Error("Erro ao deletar ingrediente");
+            }
+
+            const data = await response.json();
+            console.log("Sucesso:", data.mensagem);
+
+            await fetchIngredientes();
+
+            // Atualiza a lista na tela
+            fetchIngredientes(prev => prev.filter(item => item.id_Ingrediente !== id_Ingrediente));
+
+        } catch (error) {
+            console.error("Erro ao deletar ingrediente:", error);
+        }
     };
+
 
     // --- 3. LÓGICA DE FILTRAGEM ---
     const listaFiltrada = useMemo(() => {
@@ -200,7 +200,7 @@ export default function Home() {
                 </View>
 
                 {/* --- SEÇÃO 2: LISTA DE INGREDIENTES --- */}
-                <Text style={estilo.tituloLista}>Itens no Estoque ({listaFiltrada.length} encontrado(s)):</Text>
+                <Text style={estilo.tituloLista}>Itens no Estoque:</Text>
                 <View style={estilo.listaContainer}>
                     {listaFiltrada.map((ingredientes) => {
                         const isLowStock = ingredientes.qtdAtual <= ingredientes.pontoDePedido;
@@ -219,7 +219,7 @@ export default function Home() {
                                         </View>
                                         <View style={estilo.detailBlock}>
                                             <Text style={estilo.itemLabelBlock}>Qtde atual:</Text>
-                                            <Text style={[estilo.itemValueBlock, estilo.qtdAtualValue]}>{ingredientes.quantidade.toFixed(3)} {ingredientes.unidade}</Text>
+                                            <Text style={[estilo.itemValueBlock, estilo.qtdAtualValue]}>{ingredientes.quantidade} {ingredientes.unidade}</Text>
                                         </View>
                                     </View>
 
@@ -231,7 +231,7 @@ export default function Home() {
                                         </View>
                                         <View style={estilo.detailBlock}>
                                             <Text style={estilo.itemLabelBlock}>Ponto de pedido:</Text>
-                                            <Text style={estilo.itemValueBlock}>{ingredientes.pontoDePedido}</Text>
+                                            <Text style={estilo.itemValueBlock}>{ingredientes.ponto_pedido}</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -247,7 +247,7 @@ export default function Home() {
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={estilo.deleteButtonBlock}
-                                        onPress={() => EXCLUIRIngrediente(ingredientes.id, ingredientes.nome)}
+                                        onPress={() => EXCLUIRIngrediente(ingredientes.id_Ingrediente)}
                                     >
                                         <Text style={estilo.buttonText}>Excluir</Text>
                                     </TouchableOpacity>

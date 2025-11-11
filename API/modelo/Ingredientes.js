@@ -2,10 +2,9 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../dataBase");
 
 const Ingrediente = sequelize.define("Ingredientes", {
-    id_ingrediente: {
+    id_Ingrediente: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        field: "id_ingrediente",
         autoIncrement: true,
         allowNull: false,
     },
@@ -37,6 +36,8 @@ const Ingrediente = sequelize.define("Ingredientes", {
         type: DataTypes.STRING,
         allowNull: false,
     }
-});
+}, {
+    timestamps: false // isso faz nascer createdAt e updatedAt
+  });
 
 module.exports = Ingrediente;

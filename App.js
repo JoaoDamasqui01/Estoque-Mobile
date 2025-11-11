@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, StyleSheet } from 'react-native';
 
 // ...existing code...
-import Home from './screens/home'; // Certifique-se que o arquivo é 'Home.js'
+import Home from './screens/Home'; // Certifique-se que o arquivo é 'Home.js'
 // ...existing code...
 import IngredienteForm from './screens/IngredienteForm';
 
