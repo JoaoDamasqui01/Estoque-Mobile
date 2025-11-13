@@ -18,7 +18,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 const api = "http://localhost:5000/ingredientes";
 
 // --- CONFIGURAÇÕES GLOBAIS ---
-const LOCALIZACOES_OPCOES = ['Armário', 'Geladeira', 'Freezer'];
+const LOCALIZACOES_OPCOES = ['ARMÁRIO', 'GELADEIRA', 'FREZZER'];
 
 // --- COMPONENTE PRINCIPAL: Home ---
 export default function Home() {
@@ -160,7 +160,7 @@ export default function Home() {
                         <Text style={estilo.textoBotao}>Adicionar novo Ingrediente</Text>
                     </TouchableOpacity>
 
-                    {/* Filtros de Estoque (RadioButton) */}
+                    {/* Filtros de Estoque (RadioButton) 
                     <View style={estilo.topico}>
                         <View style={estilo.tituloRow}>
                             <Text style={estilo.tituloFiltro}>Filtros:</Text>

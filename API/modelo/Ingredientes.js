@@ -7,6 +7,7 @@ const Ingrediente = sequelize.define("Ingredientes", {
         primaryKey: true,
         autoIncrement: true,
         allowNull: false,
+        field: 'id_Ingrediente'
     },
     nome: {
         type: DataTypes.STRING,
@@ -37,7 +38,9 @@ const Ingrediente = sequelize.define("Ingredientes", {
         allowNull: false,
     }
 }, {
-    timestamps: false // isso faz nascer createdAt e updatedAt
-  });
+    timestamps: false, // isso faz nascer createdAt e updatedAt
+    tableName: 'Ingredientes'
+}
+);
 
 module.exports = Ingrediente;

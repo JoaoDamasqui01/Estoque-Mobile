@@ -92,7 +92,8 @@ export default function IngredienteForm() {
             navigation.goBack(); // Volta para a lista
         } catch (error) {
             console.error("Erro ao editar:", error);
-            Alert.alert("Erro", "Falha ao editar o ingrediente.");
+            
+            console.error("Erro", "Falha ao editar o ingrediente.");
         }
     };
 
@@ -111,7 +112,7 @@ export default function IngredienteForm() {
             !formData.fornecedor.trim() ||
             !formData.precoCusto.trim()
         ) {
-            Alert.alert("Erro", "Todos os campos devem ser preenchidos.");
+            console.log("Erro", "Todos os campos devem ser preenchidos.");
             return;
         }
 

@@ -144,39 +144,36 @@ app.get("/ingredientes/:id", async (req, res) => {
  * Espera um JSON no corpo da requisição com os dados a serem alterados.
  */
 app.put("/ingredientes/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
-
-    if (isNaN(id) || id <= 0) {
-        return res.status(400).json({
-            mensagem: "O ID deve ser um número positivo válido."
-        });
-    }
-
     try {
-        // Atualiza o ingrediente com os dados do corpo (req.body)
-        const [updated] = await Ingrediente.update(req.body, {
-            where: {
-                id: id
-            }
+        const id = parseInt(req.params.id);
+
+        if(isNaN(id) || id <= 0){
+            console.error("ID não encontrado no banco de dados: " + id)
+        }
+
+        const [atualizados] = await Ingrediente.update(req.body, {
+            where: { id_Ingrediente: id }, 
         });
 
-        if (updated) {
-            // Busca e retorna o ingrediente atualizado
-            const ingredienteAtualizado = await Ingrediente.findByPk(id);
-            res.status(200).json({
-                ingrediente: ingredienteAtualizado,
-                mensagem: "Ingrediente atualizado com sucesso!"
-            });
-        } else {
-            res.status(404).json({
-                mensagem: "Ingrediente não encontrado para atualização."
-            });
+        if (atualizados === 0) {
+            return res
+                .status(404)
+                .json({ mensagem: "Ingrediente não encontrado para atualização." });
         }
+
+        const ingredienteAtualizado = await Ingrediente.findOne({
+            where: { id_Ingrediente: id },
+        });
+
+        res.status(200).json({
+            mensagem: "Ingrediente atualizado com sucesso!",
+            ingrediente: ingredienteAtualizado,
+        });
     } catch (error) {
         console.error("Erro ao atualizar ingrediente:", error);
-        res.status(400).json({
-            erro: "Erro ao atualizar o registro",
-            detalhes: error.message
+        res.status(500).json({
+            erro: "Erro interno ao atualizar o ingrediente",
+            detalhes: error.message,
         });
     }
 });
@@ -197,7 +194,9 @@ app.delete("/ingredientes/:id", async (req, res) => {
     }
 
     try {
-        const ingrediente = await Ingrediente.findByPk(id);
+        const ingrediente = await Ingrediente.findOne(
+            { where: { id_Ingrediente: id } }
+        )
 
         if (!ingrediente) {
             return res.status(404).json({
