@@ -5,15 +5,8 @@ const cors = require("cors");
 
 const app = express();
 
-const corsOptions = {
 
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-    optionsSuccessStatus: 204
-};
-
-app.use(cors(corsOptions))
+app.use(cors())
 app.use(express.json());
 
 const port = 5000;
@@ -27,8 +20,7 @@ bd.sync().then(() => {
 
 
 /**
- * 🟢 POST /ingredientes
- * CRIA um novo ingrediente.
+ * POST  CRIA um novo ingrediente.
  */
 app.post("/ingredientes", async (req, res) => {
     try {
@@ -78,8 +70,7 @@ app.post("/ingredientes", async (req, res) => {
 // -----------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * 📚 GET /ingredientes
- * LÊ (Busca) todos os ingredientes.
+ * 📚 GET lê todos os ingredientes.
  */
 app.get("/ingredientes", async (req, res) => {
     try {
@@ -106,8 +97,7 @@ app.get("/ingredientes", async (req, res) => {
 // -----------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * 🔎 GET /ingredientes/:id
- * LÊ (Busca) um único ingrediente pelo ID.
+ * GET LÊ um único ingrediente pelo ID.
  */
 app.get("/ingredientes/:id", async (req, res) => {
     const id = parseInt(req.params.id);
@@ -139,8 +129,7 @@ app.get("/ingredientes/:id", async (req, res) => {
 // -----------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * ✏️ PUT /ingredientes/:id
- * ATUALIZA um ingrediente existente pelo ID.
+ * PUT atualiza um ingrediente existente pelo ID.
  * Espera um JSON no corpo da requisição com os dados a serem alterados.
  */
 app.put("/ingredientes/:id", async (req, res) => {
@@ -181,8 +170,7 @@ app.put("/ingredientes/:id", async (req, res) => {
 // -----------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * 🗑️ DELETE /ingredientes/:id
- * DELETA um ingrediente pelo ID.
+ * DELETE  um ingrediente pelo ID.
  */
 app.delete("/ingredientes/:id", async (req, res) => {
     const id = parseInt(req.params.id);
